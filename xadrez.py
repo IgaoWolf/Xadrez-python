@@ -2,73 +2,92 @@ import pygame
 import sys
 import os
 
-# Inicializa o pygame
-pygame.init()
-
-# Configurações da tela
-WIDTH, HEIGHT = 800, 800
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Jogo de Xadrez")
-
-# Cores
+# Configurações do jogo
+BOARD_SIZE = 8
+SQUARE_SIZE = 100
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (128, 128, 128)  # Cor cinza para os quadrados escuros
-RED = (255, 0, 0)  # Cor para o contorno
 
-# Carrega as imagens das peças
-IMAGES = {}
-pieces = ['wp', 'wR', 'wN', 'wB', 'wQ', 'wK', 'bp', 'bR', 'bN', 'bB', 'bQ', 'bK']
+# Inicializa o pygame
+pygame.init()
+SCREEN = pygame.display.set_mode((BOARD_SIZE * SQUARE_SIZE, BOARD_SIZE * SQUARE_SIZE))
+pygame.display.set_caption("Jogo de Xadrez")
+
+# Inicializa o tabuleiro
+board = [
+    ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
+    ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
+    ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]
+]
 
 def load_images():
-    for piece in pieces:
-        if piece.startswith('w'):
-            image = pygame.image.load(f"images/white/{piece}.png")
-        else:
-            image = pygame.image.load(f"images/{piece}.png")
-        
-        # Redimensiona a imagem para 100x100 pixels
-        IMAGES[piece] = pygame.transform.scale(image, (100, 100))
+    global IMAGES
+    IMAGES = {}
+    piece_types = ['w', 'b']
+    pieces = ['R', 'N', 'B', 'Q', 'K', 'p']
+    for color in piece_types:
+        for piece in pieces:
+            file_path = f"images/{color}/{color}{piece}.png"
+            if os.path.exists(file_path):
+                image = pygame.image.load(file_path)
+                image = pygame.transform.scale(image, (SQUARE_SIZE, SQUARE_SIZE))
+                IMAGES[f"{color}{piece}"] = image
+            else:
+                print(f"Image file {file_path} not found.")
 
-def draw_board(screen):
+def draw_board():
     colors = [WHITE, GRAY]
-    for r in range(8):
-        for c in range(8):
-            color = colors[((r+c) % 2)]
-            pygame.draw.rect(screen, color, pygame.Rect(c*100, r*100, 100, 100))
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
+            pygame.draw.rect(SCREEN, colors[(r + c) % 2], pygame.Rect(c * SQUARE_SIZE, r * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
-def draw_pieces(screen, board):
-    for r in range(8):
-        for c in range(8):
+def draw_pieces():
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
             piece = board[r][c]
             if piece != "--":
-                piece_rect = pygame.Rect(c*100, r*100, 100, 100)
-                if piece.startswith('w'):
-                    # Adiciona o contorno preto se a peça for branca e estiver em um quadrado branco
-                    pygame.draw.rect(screen, BLACK, piece_rect, 2)
-                screen.blit(IMAGES[piece], piece_rect)
+                piece_image = IMAGES.get(piece)
+                if piece_image:
+                    SCREEN.blit(piece_image, (c * SQUARE_SIZE, r * SQUARE_SIZE))
+
+def move_piece(start, end):
+    start_row, start_col = start
+    end_row, end_col = end
+    piece = board[start_row][start_col]
+    board[start_row][start_col] = "--"
+    board[end_row][end_col] = piece
 
 def main():
-    clock = pygame.time.Clock()
-    screen = SCREEN
-    board = [
-        ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
-        ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["--", "--", "--", "--", "--", "--", "--", "--"],
-        ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
-        ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
-    ]
     load_images()
+    clock = pygame.time.Clock()
+    selected_piece = None
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        draw_board(screen)
-        draw_pieces(screen, board)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                col, row = event.pos
+                col //= SQUARE_SIZE
+                row //= SQUARE_SIZE
+
+                if selected_piece is None:
+                    if board[row][col] != "--" and board[row][col].startswith("w"):
+                        selected_piece = (row, col)
+                else:
+                    if (row, col) != selected_piece:
+                        move_piece(selected_piece, (row, col))
+                        selected_piece = None
+
+        draw_board()
+        draw_pieces()
         pygame.display.flip()
         clock.tick(60)
 
